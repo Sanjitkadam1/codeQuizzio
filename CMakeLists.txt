@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(CQ_BUILD_TESTS "Build unit tests" ON)
+option(CQ_BUILD_UI "Build the Qt desktop app" ON)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -28,4 +29,15 @@ if(CQ_BUILD_TESTS)
         GIT_SHALLOW TRUE)
     FetchContent_MakeAvailable(googletest)
     add_subdirectory(tests)
+endif()
+
+# Needs GoogleTest (above) for its controller tests, so it comes last.
+if(CQ_BUILD_UI)
+    find_package(Qt6 6.5 QUIET COMPONENTS Quick QuickControls2 Test)
+    if(Qt6_FOUND)
+        add_subdirectory(ui)
+    else()
+        message(WARNING "Qt 6 not found - skipping the desktop app. "
+                        "Pass -DCMAKE_PREFIX_PATH=<Qt>/msvc2022_64 to build it.")
+    endif()
 endif()
