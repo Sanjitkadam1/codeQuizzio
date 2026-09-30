@@ -1,0 +1,28 @@
+{
+  "questions": [
+    { "id": "vec-decl", "prompt": "Declare an empty std::vector<int> named v", "answers": ["std::vector<int> v;"], "difficulty": 2, "tags": ["stl", "vector"] },
+    { "id": "vec-init", "prompt": "Declare a std::vector<int> v initialised with 1, 2, 3", "answers": ["std::vector<int> v = {1, 2, 3};", "std::vector<int> v{1, 2, 3};"], "difficulty": 3, "tags": ["stl", "vector"] },
+    { "id": "vec-push", "prompt": "Append 5 to the end of vector v", "answers": ["v.push_back(5);"], "difficulty": 2, "tags": ["stl", "vector"] },
+    { "id": "vec-size", "prompt": "Store the number of elements in vector v in a size_t named n", "answers": ["size_t n = v.size();", "std::size_t n = v.size();"], "difficulty": 2, "tags": ["stl", "vector"] },
+    { "id": "vec-emplace", "prompt": "Construct an element with arguments (1, 2) in place at the end of vector v", "answers": ["v.emplace_back(1, 2);"], "difficulty": 4, "tags": ["stl", "vector"] },
+    { "id": "map-decl", "prompt": "Declare a std::map from std::string to int named counts", "answers": ["std::map<std::string, int> counts;"], "difficulty": 3, "tags": ["stl", "map"] },
+    { "id": "umap-decl", "prompt": "Declare a std::unordered_map from int to std::string named names", "answers": ["std::unordered_map<int, std::string> names;"], "difficulty": 3, "tags": ["stl", "map"] },
+    { "id": "map-find", "prompt": "Declare auto it as the result of looking up key k in map m with find", "answers": ["auto it = m.find(k);"], "difficulty": 4, "tags": ["stl", "map", "iterators"] },
+    { "id": "map-found", "prompt": "Write an if header checking that iterator it is not the end of map m (open the brace)", "answers": ["if (it != m.end()) {"], "difficulty": 4, "tags": ["stl", "map", "iterators"] },
+    { "id": "sort-call", "prompt": "Sort vector v ascending using std::sort with begin() and end()", "answers": ["std::sort(v.begin(), v.end());"], "difficulty": 3, "tags": ["stl", "algorithms"] },
+    { "id": "sort-lambda", "prompt": "Sort vector<int> v descending using std::sort and a lambda taking ints a and b", "answers": ["std::sort(v.begin(), v.end(), [](int a, int b) { return a > b; });"], "difficulty": 6, "tags": ["stl", "algorithms", "lambdas"] },
+    { "id": "lambda-decl", "prompt": "Declare a lambda named add that takes ints a and b and returns their sum (assign with auto)", "answers": ["auto add = [](int a, int b) { return a + b; };"], "difficulty": 5, "tags": ["lambdas"] },
+    { "id": "class-decl", "prompt": "Start a class named Player (open the brace)", "answers": ["class Player {"], "difficulty": 2, "tags": ["classes"] },
+    { "id": "access-public", "prompt": "Write the public access specifier line", "answers": ["public:"], "difficulty": 1, "tags": ["classes"] },
+    { "id": "ctor-decl", "prompt": "Declare a constructor for class Player taking an int hp, initialising member hp_ in the initializer list (open the brace)", "answers": ["Player(int hp) : hp_(hp) {", "Player(int hp) : hp_{hp} {"], "difficulty": 5, "tags": ["classes", "constructors"] },
+    { "id": "explicit-ctor", "prompt": "Declare an explicit constructor for Player taking an int hp (declaration only)", "answers": ["explicit Player(int hp);"], "difficulty": 5, "tags": ["classes", "constructors"] },
+    { "id": "const-method", "prompt": "Declare a const member function int getHp() returning int (declaration only)", "answers": ["int getHp() const;"], "difficulty": 4, "tags": ["classes"] },
+    { "id": "virtual-dtor", "prompt": "Declare a virtual default destructor for class Base", "answers": ["virtual ~Base() = default;"], "difficulty": 6, "tags": ["classes", "inheritance"] },
+    { "id": "inherit", "prompt": "Start class Dog publicly inheriting from Animal (open the brace)", "answers": ["class Dog : public Animal {"], "difficulty": 4, "tags": ["classes", "inheritance"] },
+    { "id": "override-decl", "prompt": "Declare void speak() as overriding a base class virtual (declaration only)", "answers": ["void speak() override;"], "difficulty": 5, "tags": ["classes", "inheritance"] },
+    { "id": "template-fn", "prompt": "Write the template line for a function template with type parameter T", "answers": ["template <typename T>", "template <class T>"], "difficulty": 5, "tags": ["templates"] },
+    { "id": "static-cast", "prompt": "Convert int i to a double named d using static_cast", "answers": ["double d = static_cast<double>(i);"], "difficulty": 4, "tags": ["casts"] },
+    { "id": "try-catch", "prompt": "Write a catch clause for std::exception by const reference, named e (open the brace)", "answers": ["catch (const std::exception& e) {", "} catch (const std::exception& e) {", "catch (const std::exception &e) {", "} catch (const std::exception &e) {"], "difficulty": 6, "tags": ["exceptions"] },
+    { "id": "throw-stmt", "prompt": "Throw a std::runtime_error with the message bad", "answers": ["throw std::runtime_error(\"bad\");"], "difficulty": 5, "tags": ["exceptions"] }
+  ]
+}

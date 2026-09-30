@@ -1,0 +1,18 @@
+{
+  "questions": [
+    { "id": "ptr-decl", "prompt": "Declare a pointer to int named p, initialised to nullptr", "answers": ["int* p = nullptr;", "int *p = nullptr;", "int * p = nullptr;"], "difficulty": 3, "tags": ["pointers"] },
+    { "id": "ptr-addr", "prompt": "Declare int pointer p pointing at the existing int x", "answers": ["int* p = &x;", "int *p = &x;"], "difficulty": 3, "tags": ["pointers"] },
+    { "id": "ptr-deref", "prompt": "Assign 10 to the int that pointer p points to", "answers": ["*p = 10;"], "difficulty": 3, "tags": ["pointers"] },
+    { "id": "ref-decl", "prompt": "Declare an int reference r that refers to x", "answers": ["int& r = x;", "int &r = x;"], "difficulty": 3, "tags": ["references"] },
+    { "id": "ref-param", "prompt": "Write the header of function swapInts taking two int references a and b, returning void (open the brace)", "answers": ["void swapInts(int& a, int& b) {", "void swapInts(int &a, int &b) {"], "difficulty": 4, "tags": ["references", "functions"] },
+    { "id": "const-ref-param", "prompt": "Write the header of function print taking a const reference to std::string s, returning void (open the brace)", "answers": ["void print(const std::string& s) {", "void print(std::string const& s) {", "void print(const std::string &s) {"], "difficulty": 4, "tags": ["references", "functions", "strings"] },
+    { "id": "arrow-member", "prompt": "Call method run() through the pointer obj", "answers": ["obj->run();"], "difficulty": 3, "tags": ["pointers", "classes"] },
+    { "id": "new-int", "prompt": "Allocate a new int on the heap with value 7 and store it in int* p", "answers": ["int* p = new int(7);", "int *p = new int(7);", "int* p = new int{7};", "int *p = new int{7};"], "difficulty": 4, "tags": ["pointers", "memory"] },
+    { "id": "delete-ptr", "prompt": "Free the heap int pointed to by p", "answers": ["delete p;"], "difficulty": 3, "tags": ["pointers", "memory"] },
+    { "id": "new-array", "prompt": "Allocate an array of 10 ints on the heap and store it in int* arr", "answers": ["int* arr = new int[10];", "int *arr = new int[10];"], "difficulty": 4, "tags": ["pointers", "memory"] },
+    { "id": "delete-array", "prompt": "Free the heap array pointed to by arr", "answers": ["delete[] arr;", "delete [] arr;"], "difficulty": 4, "tags": ["pointers", "memory"] },
+    { "id": "unique-ptr", "prompt": "Create a std::unique_ptr<Widget> named w using make_unique (with std::, no arguments)", "answers": ["auto w = std::make_unique<Widget>();", "std::unique_ptr<Widget> w = std::make_unique<Widget>();", "std::unique_ptr<Widget> w{std::make_unique<Widget>()};"], "difficulty": 5, "tags": ["pointers", "memory", "smart-pointers"] },
+    { "id": "shared-ptr", "prompt": "Create a std::shared_ptr<Widget> named w using make_shared (with std::, no arguments)", "answers": ["auto w = std::make_shared<Widget>();", "std::shared_ptr<Widget> w = std::make_shared<Widget>();"], "difficulty": 5, "tags": ["pointers", "memory", "smart-pointers"] },
+    { "id": "move-call", "prompt": "Call function take with a, casting it to an rvalue using std::move", "answers": ["take(std::move(a));"], "difficulty": 6, "tags": ["move-semantics"] }
+  ]
+}

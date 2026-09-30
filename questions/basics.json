@@ -1,0 +1,31 @@
+{
+  "questions": [
+    { "id": "inc-iostream", "prompt": "Include the iostream header", "answers": ["#include <iostream>"], "difficulty": 1, "tags": ["basics", "preprocessor"] },
+    { "id": "inc-vector", "prompt": "Include the vector header", "answers": ["#include <vector>"], "difficulty": 1, "tags": ["basics", "preprocessor"] },
+    { "id": "inc-string", "prompt": "Include the string header", "answers": ["#include <string>"], "difficulty": 1, "tags": ["basics", "preprocessor"] },
+    { "id": "inc-local", "prompt": "Include a local header file named utils.h", "answers": ["#include \"utils.h\""], "difficulty": 1, "tags": ["basics", "preprocessor"] },
+    { "id": "main-decl", "prompt": "Write the signature of main that takes no arguments", "answers": ["int main()", "int main(void)"], "difficulty": 1, "tags": ["basics", "functions"] },
+    { "id": "main-args", "prompt": "Write the signature of main that receives command-line arguments", "answers": ["int main(int argc, char* argv[])", "int main(int argc, char** argv)", "int main(int argc, char *argv[])", "int main(int argc, char **argv)"], "difficulty": 2, "tags": ["basics", "functions"] },
+    { "id": "ret-zero", "prompt": "Return 0 from a function", "answers": ["return 0;"], "difficulty": 1, "tags": ["basics", "functions"] },
+    { "id": "cout-hello", "prompt": "Print Hello to standard output using cout (with std::)", "answers": ["std::cout << \"Hello\";"], "difficulty": 1, "tags": ["basics", "io"] },
+    { "id": "cout-endl", "prompt": "Print x followed by a newline using cout and endl (with std::)", "answers": ["std::cout << x << std::endl;"], "difficulty": 2, "tags": ["basics", "io"] },
+    { "id": "cin-x", "prompt": "Read an already-declared int x from standard input using cin (with std::)", "answers": ["std::cin >> x;"], "difficulty": 2, "tags": ["basics", "io"] },
+    { "id": "using-std", "prompt": "Bring the whole std namespace into scope", "answers": ["using namespace std;"], "difficulty": 1, "tags": ["basics", "namespaces"] },
+    { "id": "decl-int", "prompt": "Declare an int named x initialised to 5", "answers": ["int x = 5;", "int x{5};", "int x(5);"], "difficulty": 1, "tags": ["basics", "variables"] },
+    { "id": "decl-double", "prompt": "Declare a double named price initialised to 9.99", "answers": ["double price = 9.99;", "double price{9.99};"], "difficulty": 1, "tags": ["basics", "variables"] },
+    { "id": "decl-const", "prompt": "Declare a constant int named MAX with value 100", "answers": ["const int MAX = 100;", "int const MAX = 100;", "const int MAX{100};"], "difficulty": 2, "tags": ["basics", "variables"] },
+    { "id": "decl-auto", "prompt": "Declare x with auto, initialised to 42", "answers": ["auto x = 42;", "auto x{42};"], "difficulty": 2, "tags": ["basics", "variables"] },
+    { "id": "decl-string", "prompt": "Declare a std::string named name initialised to Bob", "answers": ["std::string name = \"Bob\";", "std::string name{\"Bob\"};", "std::string name(\"Bob\");"], "difficulty": 2, "tags": ["basics", "strings"] },
+    { "id": "if-basic", "prompt": "Start an if statement that checks whether x is greater than 10 (open the brace)", "answers": ["if (x > 10) {"], "difficulty": 2, "tags": ["basics", "control-flow"] },
+    { "id": "else-if", "prompt": "Write an else-if branch checking x == 0 (open the brace)", "answers": ["else if (x == 0) {", "} else if (x == 0) {"], "difficulty": 2, "tags": ["basics", "control-flow"] },
+    { "id": "for-loop", "prompt": "Write a for loop header: int i from 0 up to (not including) n, incrementing by 1 (open the brace)", "answers": ["for (int i = 0; i < n; i++) {", "for (int i = 0; i < n; ++i) {"], "difficulty": 2, "tags": ["basics", "loops"] },
+    { "id": "while-loop", "prompt": "Write a while loop header that runs while running is true (open the brace)", "answers": ["while (running) {"], "difficulty": 2, "tags": ["basics", "loops"] },
+    { "id": "range-for", "prompt": "Write a range-based for loop over vector v, reading each element as an int named x (open the brace)", "answers": ["for (int x : v) {", "for (auto x : v) {"], "difficulty": 3, "tags": ["basics", "loops"] },
+    { "id": "range-for-ref", "prompt": "Write a range-based for loop over vector<int> v taking each element by const reference with auto, named x (open the brace)", "answers": ["for (const auto& x : v) {", "for (auto const& x : v) {", "for (const auto &x : v) {"], "difficulty": 3, "tags": ["basics", "loops", "references"] },
+    { "id": "func-add", "prompt": "Write the header of a function add that takes two ints a and b and returns an int (open the brace)", "answers": ["int add(int a, int b) {"], "difficulty": 2, "tags": ["functions"] },
+    { "id": "func-void", "prompt": "Write the header of a function greet that takes no parameters and returns nothing (open the brace)", "answers": ["void greet() {"], "difficulty": 2, "tags": ["functions"] },
+    { "id": "func-proto", "prompt": "Write a function prototype (declaration) for int square(int n)", "answers": ["int square(int n);", "int square(int);"], "difficulty": 2, "tags": ["functions"] },
+    { "id": "switch-stmt", "prompt": "Start a switch statement on variable choice (open the brace)", "answers": ["switch (choice) {"], "difficulty": 2, "tags": ["basics", "control-flow"] },
+    { "id": "ternary", "prompt": "Assign to int m the larger of a and b using the ternary operator", "answers": ["int m = a > b ? a : b;", "int m = (a > b) ? a : b;", "int m = a > b ? a : b ;"], "difficulty": 3, "tags": ["basics", "operators"] }
+  ]
+}
