@@ -1,0 +1,193 @@
+#include "QuizController.h"
+
+#include <QCoreApplication>
+#include <QDir>
+
+#include <exception>
+
+#include "AdaptiveSelector.h"
+#include "AnswerChecker.h"
+
+namespace {
+constexpr int kTickMs = 50;
+constexpr int kCorrectFlashMs = 900;
+}  // namespace
+
+QuizController::QuizController(QObject* parent) : QObject(parent) {
+    tick_.setInterval(kTickMs);
+    connect(&tick_, &QTimer::timeout, this, &QuizController::updateElapsed);
+    autoAdvance_.setSingleShot(true);
+    autoAdvance_.setInterval(kCorrectFlashMs);
+    connect(&autoAdvance_, &QTimer::timeout, this, &QuizController::advance);
+
+    loadQuestions();
+    restart();
+}
+
+void QuizController::loadQuestions() {
+    QStringList candidates = {
+        QCoreApplication::applicationDirPath() + "/questions",
+        QStringLiteral(CQ_DEFAULT_QUESTIONS_DIR),
+    };
+    // CQ_QUESTIONS_DIR lets you point the app at your own packs (and tests at fixtures).
+    const QString override = qEnvironmentVariable("CQ_QUESTIONS_DIR");
+    if (!override.isEmpty()) candidates.prepend(override);
+    for (const QString& dir : candidates) {
+        if (!QDir(dir).exists()) continue;
+        try {
+            bank_.loadFromDirectory(dir.toStdString());
+            if (bank_.empty()) loadError_ = "No questions found in " + dir;
+        } catch (const std::exception& e) {
+            loadError_ = QString("Could not load questions: ") + e.what();
+        }
+        return;
+    }
+    loadError_ = "Questions folder not found (looked in: " + candidates.join(", ") + ")";
+}
+
+void QuizController::restart() {
+    autoAdvance_.stop();
+    tick_.stop();
+    paused_ = false;
+    emit pausedChanged();
+
+    if (bank_.empty()) {
+        session_.reset();
+        setState(Finished);
+        emit statsChanged();
+        return;
+    }
+    session_ = std::make_unique<cq::Session>(bank_, std::make_unique<cq::AdaptiveSelector>(), scoring_);
+    emit statsChanged();
+    startQuestion();
+}
+
+void QuizController::startQuestion() {
+    const cq::Question* q = session_->nextQuestion();
+    prompt_ = QString::fromStdString(q->prompt);
+    difficulty_ = q->difficulty;
+    par_ = scoring_.parSeconds(*q);
+    emit questionChanged();
+
+    paused_ = false;
+    emit pausedChanged();
+    accumulatedMs_ = 0;
+    elapsed_ = 0.0;
+    emit elapsedChanged();
+
+    // The clock starts the moment the question is shown.
+    running_.start();
+    clockRunning_ = true;
+    tick_.start();
+    setState(Asking);
+}
+
+double QuizController::currentElapsed() const {
+    qint64 ms = accumulatedMs_;
+    if (clockRunning_) ms += running_.elapsed();
+    return static_cast<double>(ms) / 1000.0;
+}
+
+void QuizController::stopClock() {
+    if (clockRunning_) accumulatedMs_ += running_.elapsed();
+    clockRunning_ = false;
+    tick_.stop();
+}
+
+void QuizController::updateElapsed() {
+    if (state_ != Asking || !clockRunning_) return;
+    elapsed_ = currentElapsed();
+    emit elapsedChanged();
+}
+
+void QuizController::setState(State s) {
+    if (state_ == s) return;
+    state_ = s;
+    emit stateChanged();
+}
+
+void QuizController::submit(const QString& text) {
+    switch (state_) {
+        case Asking: {
+            if (paused_ || text.trimmed().isEmpty()) return;
+            const double t = currentElapsed();
+            stopClock();
+            elapsed_ = t;
+            emit elapsedChanged();
+
+            const cq::AttemptResult r = session_->submit(text.toStdString(), t);
+            lastQuestion_ = r.question;
+            if (r.outcome == cq::Outcome::Correct) {
+                lastPoints_ = r.points;
+                lastSpeed_ = r.breakdown.speedMultiplier;
+                lastStreak_ = r.breakdown.streakMultiplier;
+                answerHint_.clear();
+                emit feedbackChanged();
+                emit statsChanged();
+                setState(Correct);
+                autoAdvance_.start();
+            } else {
+                lastPoints_ = 0;
+                answerHint_ = QString::fromStdString(r.question->answers.front());
+                emit feedbackChanged();
+                emit statsChanged();
+                setState(Missed);
+            }
+            break;
+        }
+        case Missed:
+            // Retyping the right answer earns nothing but builds the muscle memory.
+            if (cq::isCorrect(*lastQuestion_, text.toStdString())) {
+                advance();
+            } else {
+                emit retypeRejected();
+            }
+            break;
+        case Correct:
+        case Skipped:
+            advance();
+            break;
+        case Finished:
+            break;
+    }
+}
+
+void QuizController::skip() {
+    if (state_ != Asking || paused_) return;
+    stopClock();
+    const cq::AttemptResult r = session_->skip();
+    lastQuestion_ = r.question;
+    lastPoints_ = 0;
+    answerHint_ = QString::fromStdString(r.question->answers.front());
+    emit feedbackChanged();
+    emit statsChanged();
+    setState(Skipped);
+}
+
+void QuizController::togglePause() {
+    if (state_ != Asking) return;
+    if (paused_) {
+        running_.restart();
+        clockRunning_ = true;
+        paused_ = false;
+    } else {
+        accumulatedMs_ += running_.elapsed();
+        clockRunning_ = false;
+        paused_ = true;
+    }
+    emit pausedChanged();
+}
+
+void QuizController::advance() {
+    autoAdvance_.stop();
+    if (state_ == Correct || state_ == Missed || state_ == Skipped) startQuestion();
+}
+
+void QuizController::endSession() {
+    autoAdvance_.stop();
+    stopClock();
+    paused_ = false;
+    emit pausedChanged();
+    setState(Finished);
+    emit statsChanged();
+}

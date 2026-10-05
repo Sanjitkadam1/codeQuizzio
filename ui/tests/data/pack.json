@@ -1,0 +1,5 @@
+{
+  "questions": [
+    { "id": "only", "prompt": "Return 0 from a function", "answers": ["return 0;"], "difficulty": 1, "tags": ["test"] }
+  ]
+}
