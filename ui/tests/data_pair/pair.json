@@ -1,0 +1,6 @@
+{
+  "questions": [
+    { "id": "known", "prompt": "The one you have mastered", "answers": ["known;"], "difficulty": 1, "tags": ["t"] },
+    { "id": "fresh", "prompt": "The one you have never seen", "answers": ["fresh;"], "difficulty": 1, "tags": ["t"] }
+  ]
+}

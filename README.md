@@ -10,7 +10,8 @@ You get a short prompt like *"Include the iostream header"* or *"Write a range-b
 
 - **Short, syntax-level questions.** One-liners, not whole programs. 65 C++ questions so far, across basics, pointers and references, STL, and classes.
 - **Speed-based scoring.** Points depend on question difficulty, how fast you answer compared to a par time, and your current streak.
-- **Adaptive question order.** The next question is chosen by an algorithm that tracks your performance. It climbs in difficulty while you answer quickly and correctly, eases off when you miss or skip, and brings missed questions back a few turns later.
+- **Adaptive question order that learns from your history.** Difficulty climbs while you answer quickly and correctly and eases off when you miss or skip. Across sessions, questions you know poorly or slowly come up more, mastered ones fade (but never vanish), knowledge you haven't used in a while comes back for review, your weakest topics get extra attention, and each session starts near the level you've reached.
+- **Tweakable without recompiling.** Every knob of the selection algorithm is a documented setting in [`config/selector.json`](config/selector.json). See the [tuning and forking guide](docs/TUNING.md).
 - **Clock starts when you see the question.** There is no free thinking time.
 - **Pause and skip.** Pause (`Esc`) hides the question and freezes the clock. Skip (`Ctrl+S`) scores +0 and shows the answer.
 - **Retype on a miss.** A wrong answer shows the correct one and you retype it to continue. That repetition is the whole point.
@@ -75,9 +76,9 @@ cmake --build build --config Debug
 build/ui/Debug/cq_app.exe
 ```
 
-The build copies the Qt DLLs and the `questions/` folder next to the executable, so you can also double-click it. To use your own question folder, set the `CQ_QUESTIONS_DIR` environment variable.
+The build copies the Qt DLLs, the `questions/` folder, and `config/` next to the executable, so you can also double-click it. To use your own question folder, set the `CQ_QUESTIONS_DIR` environment variable; for your own selection settings, set `CQ_SELECTOR_CONFIG` to a JSON file (see the [tuning guide](docs/TUNING.md)).
 
-There is also a text-only version of the game, `build/console/Debug/cq_console.exe`, which is handy for tuning the scoring and the selection algorithm.
+There is also a bare-bones text version of the game, `build/console/Debug/cq_console.exe`. It does not use saved progress or the settings file; it is mainly a quick way to try the core logic without the UI.
 
 **Run the tests**
 
@@ -95,6 +96,8 @@ core/       Pure C++17 game logic, no GUI code, fully unit-tested
               Scoring         points, par time, multipliers
               Selector        interface for "what question is next"
               AdaptiveSelector  the default selection algorithm
+              Mastery         how well you know a question, from your saved stats
+              SelectorConfig  every selection setting, loaded from config/selector.json
               Session         score, streak, and counts for one play session
               Progress        all-time stats, records, and session history (pure data)
               ProgressStore   crash-safe load/save of Progress to disk
@@ -103,7 +106,9 @@ ui/         Qt 6 / QML front end
               qml/Main.qml    the game screen
 console/    Text-mode harness for the core library
 questions/  JSON question packs
-tests/      Unit tests for core (GoogleTest)
+config/     selector.json: settings for the selection algorithm
+docs/       TUNING.md: how it works, every setting, and how to fork it
+tests/      Unit tests for core (GoogleTest), including simulated-player tests
 ui/tests/   Unit tests for the controller: timer, pause, skip, retype
 ```
 
@@ -137,7 +142,7 @@ Drop a `.json` file into `questions/`. Every file in the folder is loaded at sta
 - [x] Core library: question loading, answer checking, scoring, adaptive selection
 - [x] Qt desktop UI with timer, pause, skip, and retype-on-miss
 - [x] Save progress and per-question stats between sessions
-- [ ] Question selection that uses your history
+- [x] Question selection that uses your history, with tweakable settings
 - [ ] Stats screen (accuracy over time, weakest topics)
 - [ ] Animation, sound, and a mascot
 - [ ] Settings (answer strictness, choosing question packs)

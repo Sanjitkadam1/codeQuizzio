@@ -26,6 +26,9 @@ struct QuestionStats {
     double bestTime = 0.0;          // seconds; 0 means "no correct answer yet"
     double totalCorrectTime = 0.0;  // sum over correct answers
     std::int64_t lastSeen = 0;      // unix seconds
+    // Last few outcomes, oldest first: 'c' correct, 'w' wrong, 's' skipped.
+    // Lets the selector weigh recent performance over ancient history.
+    std::string recent;
 
     bool hasBestTime() const { return bestTime > 0.0; }
     double averageCorrectTime() const { return correct > 0 ? totalCorrectTime / correct : 0.0; }
@@ -59,6 +62,7 @@ class Progress {
 public:
     static constexpr int kVersion = 1;
     static constexpr std::size_t kMaxHistory = 200;
+    static constexpr std::size_t kRecentLength = 8;  // outcomes kept per question
 
     void recordAnswer(const std::string& questionId, Outcome outcome, double elapsedSeconds,
                       std::int64_t now);
