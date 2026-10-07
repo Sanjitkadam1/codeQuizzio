@@ -6,8 +6,10 @@
 #include <QTimer>
 #include <QtQml/qqml.h>
 
+#include <filesystem>
 #include <memory>
 
+#include "Progress.h"
 #include "QuestionBank.h"
 #include "Scoring.h"
 #include "Session.h"
@@ -21,6 +23,8 @@ class QuizController : public QObject {
     Q_PROPERTY(State state READ state NOTIFY stateChanged)
     Q_PROPERTY(bool paused READ paused NOTIFY pausedChanged)
     Q_PROPERTY(QString loadError READ loadError CONSTANT)
+    // Non-empty if saved progress had to be recovered or reset at startup.
+    Q_PROPERTY(QString progressWarning READ progressWarning CONSTANT)
 
     Q_PROPERTY(QString prompt READ prompt NOTIFY questionChanged)
     Q_PROPERTY(int difficulty READ difficulty NOTIFY questionChanged)
@@ -50,10 +54,12 @@ public:
     Q_ENUM(State)
 
     explicit QuizController(QObject* parent = nullptr);
+    ~QuizController() override;
 
     State state() const { return state_; }
     bool paused() const { return paused_; }
     const QString& loadError() const { return loadError_; }
+    const QString& progressWarning() const { return progressWarning_; }
 
     const QString& prompt() const { return prompt_; }
     int difficulty() const { return difficulty_; }
@@ -90,6 +96,9 @@ signals:
 
 private:
     void loadQuestions();
+    void loadProgress();
+    void saveProgress();
+    void finishSession();  // logs the session in Progress (once) and saves
     void startQuestion();
     void advance();
     void setState(State s);
@@ -97,7 +106,10 @@ private:
     void stopClock();
     void updateElapsed();
 
-    cq::QuestionBank bank_;  // declared before session_: the session refers to it
+    // Declared before session_: the session refers to both.
+    cq::QuestionBank bank_;
+    cq::Progress progress_;
+    std::filesystem::path progressPath_;
     std::unique_ptr<cq::Session> session_;
     cq::Scoring scoring_;
     const cq::Question* lastQuestion_ = nullptr;
@@ -105,6 +117,7 @@ private:
     State state_ = Finished;
     bool paused_ = false;
     QString loadError_;
+    QString progressWarning_;
 
     QString prompt_;
     int difficulty_ = 1;

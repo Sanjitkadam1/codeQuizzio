@@ -2,6 +2,8 @@ add_executable(cq_tests
     AnswerCheckerTests.cpp
     ScoringTests.cpp
     QuestionBankTests.cpp
+    ProgressTests.cpp
+    ProgressStoreTests.cpp
     SelectorTests.cpp
     SessionTests.cpp)
 

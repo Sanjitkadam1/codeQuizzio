@@ -1,11 +1,10 @@
 #pragma once
 
+#include "Outcome.h"
 #include "Question.h"
 #include "QuestionBank.h"
 
 namespace cq {
-
-enum class Outcome { Correct, Wrong, Skipped };
 
 // Decides which question comes next. Kept as an interface so the algorithm can
 // be swapped (or unit-tested with a scripted fake) without touching Session.

@@ -3,6 +3,8 @@ add_library(cq_core STATIC
     AnswerChecker.cpp
     Scoring.cpp
     AdaptiveSelector.cpp
+    Progress.cpp
+    ProgressStore.cpp
     Session.cpp)
 
 target_include_directories(cq_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

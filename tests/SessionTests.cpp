@@ -113,6 +113,92 @@ TEST(Session, FasterAnswersScoreHigher) {
     EXPECT_GT(f1.session->submit("aaa", 0.5).points, f2.session->submit("aaa", 20.0).points);
 }
 
+TEST(Session, RecordsEveryAnswerIntoProgress) {
+    Fixture f;
+    Progress progress;
+    std::int64_t now = 1000;
+    f.session->attachProgress(&progress, [&] { return now++; });
+
+    f.session->nextQuestion();  // a
+    f.session->submit("aaa", 2.0);
+    f.session->nextQuestion();  // b
+    f.session->submit("wrong", 5.0);
+    f.session->nextQuestion();  // c
+    f.session->skip();
+
+    ASSERT_NE(progress.stats("a"), nullptr);
+    EXPECT_EQ(progress.stats("a")->correct, 1);
+    EXPECT_DOUBLE_EQ(progress.stats("a")->bestTime, 2.0);
+    EXPECT_EQ(progress.stats("a")->lastSeen, 1000);
+    EXPECT_EQ(progress.stats("b")->misses, 1);
+    EXPECT_EQ(progress.stats("c")->skips, 1);
+}
+
+TEST(Session, WithoutProgressNothingIsRecorded) {
+    Fixture f;
+    f.session->nextQuestion();
+    f.session->submit("aaa", 1.0);
+    auto summary = f.session->finish();
+    EXPECT_FALSE(summary.recorded);
+    EXPECT_EQ(summary.record.correct, 1);
+}
+
+TEST(Session, FinishLogsTheSessionOnce) {
+    Fixture f;
+    Progress progress;
+    f.session->attachProgress(&progress, [] { return std::int64_t{5000}; });
+
+    f.session->nextQuestion();
+    f.session->submit("aaa", 1.0);
+    f.session->nextQuestion();
+    f.session->submit("bbb", 1.0);
+    f.session->nextQuestion();
+    f.session->submit("nope", 1.0);
+
+    auto first = f.session->finish();
+    EXPECT_TRUE(first.recorded);
+    EXPECT_TRUE(first.newHighScore);
+    EXPECT_TRUE(first.newBestStreak);
+    EXPECT_EQ(first.record.endedAt, 5000);
+    EXPECT_EQ(first.record.correct, 2);
+    EXPECT_EQ(first.record.wrong, 1);
+    EXPECT_EQ(first.record.bestStreak, 2);
+    EXPECT_EQ(first.record.score, f.session->score());
+
+    auto second = f.session->finish();  // e.g. ended manually, then app closed
+    EXPECT_EQ(second.record.score, first.record.score);
+    EXPECT_EQ(progress.totalSessions(), 1);
+    EXPECT_EQ(progress.history().size(), 1u);
+}
+
+TEST(Session, EmptySessionIsNotRecorded) {
+    Fixture f;
+    Progress progress;
+    f.session->attachProgress(&progress);
+    f.session->nextQuestion();  // shown but never answered
+    EXPECT_FALSE(f.session->finish().recorded);
+    EXPECT_EQ(progress.totalSessions(), 0);
+}
+
+TEST(Session, SecondSessionCanSetNoRecord) {
+    Progress progress;
+    auto bank = makeBank(3, 3);
+
+    Session strong(bank, std::make_unique<AdaptiveSelector>(1));
+    strong.attachProgress(&progress);
+    for (int i = 0; i < 5; ++i) strong.submit(strong.nextQuestion()->answers.front(), 0.5);
+    EXPECT_TRUE(strong.finish().newHighScore);
+
+    Session weak(bank, std::make_unique<AdaptiveSelector>(2));
+    weak.attachProgress(&progress);
+    weak.nextQuestion();
+    weak.skip();
+    auto summary = weak.finish();
+    EXPECT_TRUE(summary.recorded);
+    EXPECT_FALSE(summary.newHighScore);
+    EXPECT_EQ(progress.totalSessions(), 2);
+}
+
 TEST(Session, WorksEndToEndWithAdaptiveSelector) {
     auto bank = makeBank(5, 6);
     Session s(bank, std::make_unique<AdaptiveSelector>(123));

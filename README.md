@@ -16,6 +16,7 @@ You get a short prompt like *"Include the iostream header"* or *"Write a range-b
 - **Retype on a miss.** A wrong answer shows the correct one and you retype it to continue. That repetition is the whole point.
 - **Forgiving about whitespace, strict about syntax.** `int x=5;` matches `int x = 5;`, but `intx = 5;` does not.
 - **Questions are plain JSON.** Add or edit questions without touching code.
+- **Progress is saved automatically.** Every answer is written to disk straight away, along with per-question stats (attempts, misses, best and average time), your high score and best streak, and a history of your last 200 sessions. See [Saved progress](#saved-progress).
 
 ## How scoring works
 
@@ -29,6 +30,19 @@ points = 10 × difficulty × speed multiplier × streak multiplier
 - Wrong answers and skips score 0 and reset the streak.
 
 All the tuning constants are at the top of [`core/Scoring.cpp`](core/Scoring.cpp).
+
+## Saved progress
+
+Progress lives in `%APPDATA%\CodeQuizzio\progress.json` (set `CQ_PROGRESS_FILE` to use a different file). It is a plain JSON file you can open and read.
+
+Saving is designed not to lose your data if the app or the machine crashes:
+
+- Each save is written to `progress.json.tmp` first and then renamed over `progress.json`, so a crash mid-save can't leave a half-written file.
+- The previous good save is kept as `progress.json.bak`.
+- If `progress.json` is damaged, the game recovers from the backup, keeps the bad file as `progress.json.corrupt` for inspection, and shows a warning in the log. If both are unusable it starts fresh instead of crashing.
+- A save from a newer version of the app is never silently overwritten.
+
+Closing the window mid-session still counts that session.
 
 ## Building and running
 
@@ -82,6 +96,8 @@ core/       Pure C++17 game logic, no GUI code, fully unit-tested
               Selector        interface for "what question is next"
               AdaptiveSelector  the default selection algorithm
               Session         score, streak, and counts for one play session
+              Progress        all-time stats, records, and session history (pure data)
+              ProgressStore   crash-safe load/save of Progress to disk
 ui/         Qt 6 / QML front end
               QuizController  bridges Session to QML, owns the clock
               qml/Main.qml    the game screen
@@ -120,7 +136,8 @@ Drop a `.json` file into `questions/`. Every file in the folder is loaded at sta
 
 - [x] Core library: question loading, answer checking, scoring, adaptive selection
 - [x] Qt desktop UI with timer, pause, skip, and retype-on-miss
-- [ ] Save progress and per-question stats between sessions, with selection that uses your history
+- [x] Save progress and per-question stats between sessions
+- [ ] Question selection that uses your history
 - [ ] Stats screen (accuracy over time, weakest topics)
 - [ ] Animation, sound, and a mascot
 - [ ] Settings (answer strictness, choosing question packs)
