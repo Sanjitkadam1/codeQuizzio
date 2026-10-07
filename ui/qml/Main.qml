@@ -31,10 +31,12 @@ ApplicationWindow {
 
     readonly property bool asking: quiz.state === QuizController.Asking
     readonly property bool finished: quiz.state === QuizController.Finished
+    readonly property bool skipped: quiz.state === QuizController.Skipped
 
-    // Esc pauses/resumes, Ctrl+S skips.
+    // Esc pauses/resumes, Ctrl+S skips, Enter leaves the skip review card.
     Shortcut { sequence: "Esc"; enabled: win.asking; onActivated: quiz.togglePause() }
     Shortcut { sequence: "Ctrl+S"; enabled: win.asking && !quiz.paused; onActivated: quiz.skip() }
+    Shortcut { sequences: ["Return", "Enter"]; enabled: win.skipped; onActivated: quiz.submit("") }
 
     component Stat: ColumnLayout {
         property string label
@@ -50,6 +52,7 @@ ApplicationWindow {
         property color tint: theme.accent
         implicitHeight: 40
         implicitWidth: Math.max(110, label.implicitWidth + 36)
+        opacity: enabled ? 1.0 : 0.35
         contentItem: Text {
             id: label
             text: pill.text
@@ -116,7 +119,10 @@ ApplicationWindow {
                 radius: 20
                 color: theme.card
                 border.width: 2
-                border.color: flash.running ? theme.bad : (quiz.state === QuizController.Correct ? theme.good : theme.cardBorder)
+                border.color: flash.running ? theme.bad
+                    : quiz.state === QuizController.Correct ? theme.good
+                    : win.skipped ? theme.warn
+                    : theme.cardBorder
 
                 SequentialAnimation {
                     id: flash
@@ -142,6 +148,26 @@ ApplicationWindow {
                             }
                         }
                         Text { text: "  Level " + quiz.difficulty; color: theme.muted; font.pixelSize: 13 }
+                        Item { Layout.fillWidth: true }
+                        // Marks the skip review card so it can't be mistaken for a live question.
+                        Rectangle {
+                            visible: win.skipped
+                            radius: 10
+                            color: "transparent"
+                            border.color: theme.warn
+                            border.width: 1.5
+                            implicitWidth: skippedBadge.implicitWidth + 24
+                            implicitHeight: 26
+                            Text {
+                                id: skippedBadge
+                                anchors.centerIn: parent
+                                text: "SKIPPED  ·  +0"
+                                color: theme.warn
+                                font.pixelSize: 12
+                                font.bold: true
+                                font.letterSpacing: 1
+                            }
+                        }
                     }
 
                     // Prompt (hidden while paused so you can't study it for free)
@@ -196,33 +222,71 @@ ApplicationWindow {
                         }
                     }
 
-                    // Feedback line
+                    // Feedback line (correct / missed). A skip gets its own review block below.
                     Text {
                         Layout.fillWidth: true
-                        visible: quiz.state !== QuizController.Asking
+                        visible: quiz.state === QuizController.Correct || quiz.state === QuizController.Missed
                         textFormat: Text.StyledText
                         wrapMode: Text.WordWrap
                         font.pixelSize: 18
-                        color: quiz.state === QuizController.Correct ? theme.good : quiz.state === QuizController.Missed ? theme.bad : theme.warn
+                        color: quiz.state === QuizController.Correct ? theme.good : theme.bad
                         text: {
                             if (quiz.state === QuizController.Correct)
                                 return "Correct!  +" + quiz.lastPoints + "  <font color='" + theme.muted + "'>speed x"
                                     + quiz.lastSpeedMultiplier.toFixed(2) + " · streak x" + quiz.lastStreakMultiplier.toFixed(2) + "</font>"
-                            var label = quiz.state === QuizController.Missed ? "Not quite. Type the answer to continue:" : "Skipped (+0). Answer:"
-                            return label + "  <font face='" + theme.mono + "' color='" + theme.text + "'>" + quiz.answerHint.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</font>"
+                            return "Not quite. Type the answer to continue:  <font face='" + theme.mono + "' color='" + theme.text + "'>"
+                                + quiz.answerHint.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</font>"
                         }
                     }
 
-                    // Answer input
+                    // Skip review: the question above, the answer here, then Enter for the next one.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: win.skipped
+                        spacing: 8
+                        Text {
+                            text: "ANSWER"
+                            color: theme.muted
+                            font.pixelSize: 12
+                            font.letterSpacing: 1
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: answerText.implicitHeight + 28
+                            radius: 12
+                            color: theme.bg
+                            border.color: theme.warn
+                            border.width: 2
+                            Text {
+                                id: answerText
+                                anchors.fill: parent
+                                anchors.margins: 14
+                                text: quiz.answerHint
+                                color: theme.text
+                                font.family: theme.mono
+                                font.pixelSize: 22
+                                wrapMode: Text.WrapAnywhere
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Press Enter for the next question"; color: theme.muted; font.pixelSize: 14 }
+                            Item { Layout.fillWidth: true }
+                            PillButton { text: "Continue  (Enter)"; tint: theme.warn; onClicked: quiz.submit("") }
+                        }
+                    }
+
+                    // Answer input (not shown on the skip review card)
                     TextField {
                         id: input
                         Layout.fillWidth: true
-                        visible: !quiz.paused
+                        visible: !quiz.paused && !win.skipped
                         enabled: quiz.state !== QuizController.Correct
                         font.family: theme.mono
                         font.pixelSize: 22
                         color: theme.text
-                        placeholderText: quiz.state === QuizController.Skipped ? "Press Enter to continue" : "Type your answer and press Enter"
+                        placeholderText: "Type your answer and press Enter"
                         placeholderTextColor: theme.muted
                         selectByMouse: true
                         padding: 14

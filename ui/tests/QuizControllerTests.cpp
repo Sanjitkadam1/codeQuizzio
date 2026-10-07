@@ -140,3 +140,25 @@ TEST_F(QuizControllerTest, EndSessionAndRestart) {
     EXPECT_EQ(c.score(), 0);
     EXPECT_EQ(c.correctCount(), 0);
 }
+
+TEST_F(QuizControllerTest, ClockRestartsOnTheQuestionAfterASkip) {
+    QuizController c;
+    wait(200);
+    c.skip();
+    EXPECT_EQ(c.state(), QuizController::Skipped);
+    wait(300);  // reading the answer must not leak into the next question's time
+
+    c.submit("");  // Enter on the skipped card
+    ASSERT_EQ(c.state(), QuizController::Asking);
+    EXPECT_LT(c.elapsed(), 0.1);
+    wait(300);
+    EXPECT_GT(c.elapsed(), 0.2);  // and it is actually ticking
+}
+
+TEST_F(QuizControllerTest, SkippedCardKeepsTheQuestionAndAnswerAvailable) {
+    QuizController c;
+    const QString prompt = c.prompt();
+    c.skip();
+    EXPECT_EQ(c.prompt(), prompt);
+    EXPECT_EQ(c.answerHint(), "return 0;");
+}
