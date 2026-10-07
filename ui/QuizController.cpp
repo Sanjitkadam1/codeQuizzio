@@ -1,12 +1,15 @@
 #include "QuizController.h"
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
+#include <QStandardPaths>
 
 #include <exception>
 
 #include "AdaptiveSelector.h"
 #include "AnswerChecker.h"
+#include "ProgressStore.h"
 
 namespace {
 constexpr int kTickMs = 50;
@@ -21,9 +24,46 @@ QuizController::QuizController(QObject* parent) : QObject(parent) {
     connect(&autoAdvance_, &QTimer::timeout, this, &QuizController::advance);
 
     loadQuestions();
+    loadProgress();
     restart();
 }
 
+QuizController::~QuizController() {
+    // Closing the window mid-session still counts the session.
+    finishSession();
+}
+
+void QuizController::loadProgress() {
+    // CQ_PROGRESS_FILE overrides the location (used by tests and for debugging).
+    QString path = qEnvironmentVariable("CQ_PROGRESS_FILE");
+    if (path.isEmpty()) {
+        path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/progress.json";
+    }
+    progressPath_ = std::filesystem::path(path.toStdU16String());
+    qInfo().noquote() << "Progress file:" << path;
+
+    cq::LoadResult loaded = cq::loadProgress(progressPath_);
+    progress_ = std::move(loaded.progress);
+    if (!loaded.warning.empty()) {
+        progressWarning_ = QString::fromStdString(loaded.warning);
+        qWarning().noquote() << "Progress:" << progressWarning_;
+    }
+}
+
+void QuizController::saveProgress() {
+    try {
+        cq::saveProgress(progressPath_, progress_);
+    } catch (const std::exception& e) {
+        // Never interrupt the game over a failed save; the next answer retries.
+        qWarning().noquote() << "Could not save progress:" << e.what();
+    }
+}
+
+void QuizController::finishSession() {
+    if (!session_) return;
+    // Answers were already saved one by one; only a newly logged session needs a save.
+    if (session_->finish().recorded) saveProgress();
+}
 void QuizController::loadQuestions() {
     QStringList candidates = {
         QCoreApplication::applicationDirPath() + "/questions",
@@ -51,6 +91,7 @@ void QuizController::restart() {
     paused_ = false;
     emit pausedChanged();
 
+    finishSession();  // no-op if the previous session was already finished
     if (bank_.empty()) {
         session_.reset();
         setState(Finished);
@@ -58,6 +99,7 @@ void QuizController::restart() {
         return;
     }
     session_ = std::make_unique<cq::Session>(bank_, std::make_unique<cq::AdaptiveSelector>(), scoring_);
+    session_->attachProgress(&progress_);
     emit statsChanged();
     startQuestion();
 }
@@ -116,6 +158,7 @@ void QuizController::submit(const QString& text) {
             emit elapsedChanged();
 
             const cq::AttemptResult r = session_->submit(text.toStdString(), t);
+            saveProgress();
             lastQuestion_ = r.question;
             if (r.outcome == cq::Outcome::Correct) {
                 lastPoints_ = r.points;
@@ -156,6 +199,7 @@ void QuizController::skip() {
     if (state_ != Asking || paused_) return;
     stopClock();
     const cq::AttemptResult r = session_->skip();
+    saveProgress();
     lastQuestion_ = r.question;
     lastPoints_ = 0;
     answerHint_ = QString::fromStdString(r.question->answers.front());
@@ -186,6 +230,7 @@ void QuizController::advance() {
 void QuizController::endSession() {
     autoAdvance_.stop();
     stopClock();
+    finishSession();
     paused_ = false;
     emit pausedChanged();
     setState(Finished);

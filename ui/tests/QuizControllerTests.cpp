@@ -5,6 +5,10 @@
 #include <QSignalSpy>
 #include <QThread>
 
+#include <filesystem>
+#include <fstream>
+
+#include "ProgressStore.h"
 #include "QuizController.h"
 
 namespace {
@@ -29,6 +33,23 @@ protected:
         static char* argv[] = {arg0, nullptr};
         if (!QCoreApplication::instance()) new QCoreApplication(argc, argv);
     }
+
+    // Every test gets its own progress file in a temp dir, so tests never touch
+    // the real save and never see each other's data.
+    void SetUp() override {
+        dir = std::filesystem::temp_directory_path() /
+              (std::string("cq_ui_test_") +
+               ::testing::UnitTest::GetInstance()->current_test_info()->name());
+        std::filesystem::remove_all(dir);
+        progressFile = dir / "progress.json";
+        qputenv("CQ_PROGRESS_FILE", QByteArray::fromStdString(progressFile.string()));
+    }
+    void TearDown() override {
+        std::error_code ec;
+        std::filesystem::remove_all(dir, ec);
+    }
+
+    std::filesystem::path dir, progressFile;
 };
 
 }  // namespace
@@ -126,6 +147,123 @@ TEST_F(QuizControllerTest, EmptySubmitWhileAskingIsIgnored) {
     c.submit("   ");
     EXPECT_EQ(c.state(), QuizController::Asking);
     EXPECT_EQ(c.wrongCount(), 0);
+}
+
+TEST_F(QuizControllerTest, EveryAnswerIsSavedImmediately) {
+    QuizController c;
+    c.submit("return 1;");  // wrong
+    {
+        const auto loaded = cq::loadProgress(progressFile);  // controller still running
+        ASSERT_EQ(loaded.source, cq::LoadResult::Source::Primary);
+        ASSERT_NE(loaded.progress.stats("only"), nullptr);
+        EXPECT_EQ(loaded.progress.stats("only")->misses, 1);
+    }
+    c.submit("return 0;");  // retype: practice only, not a new attempt
+    c.skip();
+    c.submit("");           // Enter continues past the skipped screen
+    c.submit("return 0;");  // correct
+    const auto loaded = cq::loadProgress(progressFile);
+    const cq::QuestionStats* s = loaded.progress.stats("only");
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->attempts, 3);
+    EXPECT_EQ(s->misses, 1);
+    EXPECT_EQ(s->skips, 1);
+    EXPECT_EQ(s->correct, 1);
+}
+
+TEST_F(QuizControllerTest, SkipIsSaved) {
+    QuizController c;
+    c.skip();
+    const auto loaded = cq::loadProgress(progressFile);
+    ASSERT_NE(loaded.progress.stats("only"), nullptr);
+    EXPECT_EQ(loaded.progress.stats("only")->skips, 1);
+}
+
+TEST_F(QuizControllerTest, EndingASessionLogsItWithRecords) {
+    QuizController c;
+    c.submit("return 0;");
+    c.endSession();
+    const auto loaded = cq::loadProgress(progressFile);
+    EXPECT_EQ(loaded.progress.totalSessions(), 1);
+    ASSERT_EQ(loaded.progress.history().size(), 1u);
+    EXPECT_EQ(loaded.progress.history()[0].correct, 1);
+    EXPECT_GT(loaded.progress.highScore(), 0);
+    EXPECT_EQ(loaded.progress.bestStreak(), 1);
+}
+
+TEST_F(QuizControllerTest, EndingTwiceDoesNotLogTwice) {
+    QuizController c;
+    c.submit("return 0;");
+    c.endSession();
+    c.endSession();
+    c.restart();  // also finishes the old session, which is already finished
+    EXPECT_EQ(cq::loadProgress(progressFile).progress.totalSessions(), 1);
+}
+
+TEST_F(QuizControllerTest, ClosingMidSessionStillLogsTheSession) {
+    {
+        QuizController c;
+        c.submit("return 0;");
+        // window closed without pressing End session
+    }
+    EXPECT_EQ(cq::loadProgress(progressFile).progress.totalSessions(), 1);
+}
+
+TEST_F(QuizControllerTest, UnansweredSessionIsNotLogged) {
+    {
+        QuizController c;  // question shown, nothing answered
+        c.endSession();
+    }
+    EXPECT_EQ(cq::loadProgress(progressFile).progress.totalSessions(), 0);
+}
+
+TEST_F(QuizControllerTest, ProgressCarriesOverToTheNextLaunch) {
+    {
+        QuizController c;
+        c.submit("return 0;");
+        c.endSession();
+    }
+    QuizController again;
+    again.submit("return 0;");
+    again.endSession();
+
+    const auto loaded = cq::loadProgress(progressFile);
+    EXPECT_EQ(loaded.progress.totalSessions(), 2);
+    EXPECT_EQ(loaded.progress.stats("only")->correct, 2);
+    EXPECT_EQ(loaded.progress.history().size(), 2u);
+}
+
+TEST_F(QuizControllerTest, CorruptSaveIsReportedAndGameStillRuns) {
+    std::filesystem::create_directories(dir);
+    std::ofstream(progressFile) << "{ definitely not json";
+
+    QuizController c;
+    EXPECT_FALSE(c.progressWarning().isEmpty());
+    EXPECT_EQ(c.state(), QuizController::Asking);
+    c.submit("return 0;");
+    EXPECT_EQ(c.state(), QuizController::Correct);
+    // The next save replaced the bad file with a good one.
+    EXPECT_EQ(cq::loadProgress(progressFile).source, cq::LoadResult::Source::Primary);
+}
+
+TEST_F(QuizControllerTest, RecoversFromBackupAfterDamage) {
+    {
+        QuizController c;
+        c.submit("return 0;");  // save 1
+        c.submit("");           // continue
+        c.submit("return 0;");  // save 2 (backup now holds save 1)
+    }
+    std::ofstream(progressFile, std::ios::trunc) << "garbage";
+
+    QuizController c;
+    EXPECT_FALSE(c.progressWarning().isEmpty());
+    c.endSession();
+    EXPECT_GE(cq::loadProgress(progressFile).progress.stats("only")->attempts, 1);
+}
+
+TEST_F(QuizControllerTest, NoWarningOnFirstRun) {
+    QuizController c;
+    EXPECT_TRUE(c.progressWarning().isEmpty());
 }
 
 TEST_F(QuizControllerTest, EndSessionAndRestart) {

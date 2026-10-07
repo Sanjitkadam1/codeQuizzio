@@ -1,9 +1,18 @@
 #include "Session.h"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 
 namespace cq {
+
+namespace {
+std::int64_t systemSeconds() {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+}  // namespace
 
 Session::Session(const QuestionBank& bank, std::unique_ptr<Selector> selector,
                  Scoring scoring, Strictness strictness)
@@ -33,11 +42,13 @@ AttemptResult Session::submit(const std::string& input, double elapsedSeconds) {
         r.points = r.breakdown.points;
         score_ += r.points;
         selector_->record(q, Outcome::Correct, r.breakdown.speedMultiplier);
+        if (progress_) progress_->recordAnswer(q.id, Outcome::Correct, elapsedSeconds, clock_());
     } else {
         streak_ = 0;
         ++wrong_;
         r.outcome = Outcome::Wrong;
         selector_->record(q, Outcome::Wrong, 0.0);
+        if (progress_) progress_->recordAnswer(q.id, Outcome::Wrong, elapsedSeconds, clock_());
     }
     current_ = nullptr;
     return r;
@@ -48,12 +59,38 @@ AttemptResult Session::skip() {
     streak_ = 0;
     ++skipped_;
     selector_->record(q, Outcome::Skipped, 0.0);
+    if (progress_) progress_->recordAnswer(q.id, Outcome::Skipped, 0.0, clock_());
 
     AttemptResult r;
     r.outcome = Outcome::Skipped;
     r.question = &q;
     current_ = nullptr;
     return r;
+}
+
+void Session::attachProgress(Progress* progress, Clock clock) {
+    progress_ = progress;
+    clock_ = clock ? std::move(clock) : Clock(systemSeconds);
+}
+
+SessionSummary Session::finish() {
+    if (finished_) return summary_;
+    finished_ = true;
+
+    summary_.record.endedAt = clock_ ? clock_() : systemSeconds();
+    summary_.record.score = score_;
+    summary_.record.correct = correct_;
+    summary_.record.wrong = wrong_;
+    summary_.record.skipped = skipped_;
+    summary_.record.bestStreak = bestStreak_;
+
+    if (progress_ && summary_.record.answered() > 0) {
+        const RecordResult r = progress_->recordSession(summary_.record);
+        summary_.recorded = true;
+        summary_.newHighScore = r.newHighScore;
+        summary_.newBestStreak = r.newBestStreak;
+    }
+    return summary_;
 }
 
 }  // namespace cq
