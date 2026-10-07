@@ -3,6 +3,8 @@ add_library(cq_core STATIC
     AnswerChecker.cpp
     Scoring.cpp
     AdaptiveSelector.cpp
+    Mastery.cpp
+    SelectorConfig.cpp
     Progress.cpp
     ProgressStore.cpp
     Session.cpp)

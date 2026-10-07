@@ -3,9 +3,11 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QFile>
 #include <QStandardPaths>
 
 #include <exception>
+#include <random>
 
 #include "AdaptiveSelector.h"
 #include "AnswerChecker.h"
@@ -25,6 +27,7 @@ QuizController::QuizController(QObject* parent) : QObject(parent) {
 
     loadQuestions();
     loadProgress();
+    loadSelectorConfig();
     restart();
 }
 
@@ -47,6 +50,37 @@ void QuizController::loadProgress() {
     if (!loaded.warning.empty()) {
         progressWarning_ = QString::fromStdString(loaded.warning);
         qWarning().noquote() << "Progress:" << progressWarning_;
+    }
+}
+
+void QuizController::loadSelectorConfig() {
+    // CQ_SELECTOR_CONFIG overrides the file; otherwise config/selector.json next
+    // to the app, then the one in the source tree. No file at all means defaults.
+    const QString override = qEnvironmentVariable("CQ_SELECTOR_CONFIG");
+    QStringList candidates;
+    if (!override.isEmpty()) {
+        if (!QFile::exists(override)) {
+            configWarning_ = "CQ_SELECTOR_CONFIG points to a missing file: " + override +
+                             "; using default selector settings";
+            qWarning().noquote() << "Selector:" << configWarning_;
+            return;
+        }
+        candidates << override;
+    }
+    candidates << QCoreApplication::applicationDirPath() + "/config/selector.json"
+               << QStringLiteral(CQ_DEFAULT_CONFIG_DIR) + "/selector.json";
+
+    for (const QString& path : candidates) {
+        if (!QFile::exists(path)) continue;
+        cq::LoadedSelectorConfig loaded = cq::loadSelectorConfig(std::filesystem::path(path.toStdU16String()));
+        selectorConfig_ = loaded.config;
+        if (!loaded.warning.empty()) {
+            configWarning_ = QString::fromStdString(loaded.warning);
+            qWarning().noquote() << "Selector:" << configWarning_;
+        } else {
+            qInfo().noquote() << "Selector settings:" << path;
+        }
+        return;
     }
 }
 
@@ -98,7 +132,12 @@ void QuizController::restart() {
         emit statsChanged();
         return;
     }
-    session_ = std::make_unique<cq::Session>(bank_, std::make_unique<cq::AdaptiveSelector>(), scoring_);
+    cq::SelectorContext context;
+    context.progress = &progress_;  // the selector reads everything saved so far
+    context.scoring = scoring_;
+    session_ = std::make_unique<cq::Session>(
+        bank_, std::make_unique<cq::AdaptiveSelector>(std::random_device{}(), selectorConfig_, context),
+        scoring_);
     session_->attachProgress(&progress_);
     emit statsChanged();
     startQuestion();
