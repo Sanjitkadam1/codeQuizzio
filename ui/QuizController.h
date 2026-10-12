@@ -12,6 +12,7 @@
 #include "Progress.h"
 #include "QuestionBank.h"
 #include "Scoring.h"
+#include "SelectorConfig.h"
 #include "Session.h"
 
 // Bridges the pure-C++ core (Session) to QML. Owns the clock: it starts when a
@@ -25,6 +26,8 @@ class QuizController : public QObject {
     Q_PROPERTY(QString loadError READ loadError CONSTANT)
     // Non-empty if saved progress had to be recovered or reset at startup.
     Q_PROPERTY(QString progressWarning READ progressWarning CONSTANT)
+    // Non-empty if the selector settings file was unusable (defaults are used instead).
+    Q_PROPERTY(QString configWarning READ configWarning CONSTANT)
 
     Q_PROPERTY(QString prompt READ prompt NOTIFY questionChanged)
     Q_PROPERTY(int difficulty READ difficulty NOTIFY questionChanged)
@@ -60,6 +63,7 @@ public:
     bool paused() const { return paused_; }
     const QString& loadError() const { return loadError_; }
     const QString& progressWarning() const { return progressWarning_; }
+    const QString& configWarning() const { return configWarning_; }
 
     const QString& prompt() const { return prompt_; }
     int difficulty() const { return difficulty_; }
@@ -97,6 +101,7 @@ signals:
 private:
     void loadQuestions();
     void loadProgress();
+    void loadSelectorConfig();
     void saveProgress();
     void finishSession();  // logs the session in Progress (once) and saves
     void startQuestion();
@@ -109,6 +114,7 @@ private:
     // Declared before session_: the session refers to both.
     cq::QuestionBank bank_;
     cq::Progress progress_;
+    cq::SelectorConfig selectorConfig_;
     std::filesystem::path progressPath_;
     std::unique_ptr<cq::Session> session_;
     cq::Scoring scoring_;
@@ -118,6 +124,7 @@ private:
     bool paused_ = false;
     QString loadError_;
     QString progressWarning_;
+    QString configWarning_;
 
     QString prompt_;
     int difficulty_ = 1;

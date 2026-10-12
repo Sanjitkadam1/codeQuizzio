@@ -1,18 +1,9 @@
 #include "Session.h"
 
 #include <algorithm>
-#include <chrono>
 #include <stdexcept>
 
 namespace cq {
-
-namespace {
-std::int64_t systemSeconds() {
-    return std::chrono::duration_cast<std::chrono::seconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
-}
-}  // namespace
 
 Session::Session(const QuestionBank& bank, std::unique_ptr<Selector> selector,
                  Scoring scoring, Strictness strictness)

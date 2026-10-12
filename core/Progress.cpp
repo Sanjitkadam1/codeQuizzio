@@ -40,7 +40,18 @@ json toJson(const QuestionStats& s) {
             {"skips", s.skips},
             {"bestTime", s.bestTime},
             {"totalCorrectTime", s.totalCorrectTime},
-            {"lastSeen", s.lastSeen}};
+            {"lastSeen", s.lastSeen},
+            {"recent", s.recent}};
+}
+
+// Optional field (older saves don't have it). Keeps only the newest outcomes.
+std::string readRecent(const json& j) {
+    std::string r = j.value("recent", std::string{});
+    for (char c : r) {
+        if (c != 'c' && c != 'w' && c != 's') throw ProgressError("invalid character in 'recent'");
+    }
+    if (r.size() > Progress::kRecentLength) r.erase(0, r.size() - Progress::kRecentLength);
+    return r;
 }
 
 QuestionStats questionStatsFromJson(const json& j) {
@@ -53,6 +64,7 @@ QuestionStats questionStatsFromJson(const json& j) {
     s.bestTime = readSeconds(j, "bestTime");
     s.totalCorrectTime = readSeconds(j, "totalCorrectTime");
     s.lastSeen = readTimestamp(j, "lastSeen");
+    s.recent = readRecent(j);
     return s;
 }
 
@@ -81,6 +93,7 @@ void Progress::recordAnswer(const std::string& id, Outcome outcome, double elaps
     QuestionStats& s = stats_[id];
     ++s.attempts;
     s.lastSeen = now;
+    char mark = 'c';
     switch (outcome) {
         case Outcome::Correct: {
             ++s.correct;
@@ -91,11 +104,15 @@ void Progress::recordAnswer(const std::string& id, Outcome outcome, double elaps
         }
         case Outcome::Wrong:
             ++s.misses;
+            mark = 'w';
             break;
         case Outcome::Skipped:
             ++s.skips;
+            mark = 's';
             break;
     }
+    s.recent.push_back(mark);
+    if (s.recent.size() > kRecentLength) s.recent.erase(0, s.recent.size() - kRecentLength);
 }
 
 RecordResult Progress::recordSession(const SessionRecord& record) {

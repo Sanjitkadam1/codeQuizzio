@@ -300,3 +300,70 @@ TEST_F(QuizControllerTest, SkippedCardKeepsTheQuestionAndAnswerAvailable) {
     EXPECT_EQ(c.prompt(), prompt);
     EXPECT_EQ(c.answerHint(), "return 0;");
 }
+
+// ---- Selector settings and history reaching the selector ----
+
+namespace {
+
+std::filesystem::path writeFile(const std::filesystem::path& dir, const char* name, const std::string& text) {
+    std::filesystem::create_directories(dir);
+    const auto path = dir / name;
+    std::ofstream(path, std::ios::binary | std::ios::trunc) << text;
+    return path;
+}
+
+}  // namespace
+
+TEST_F(QuizControllerTest, NoSelectorWarningWithTheShippedSettings) {
+    qunsetenv("CQ_SELECTOR_CONFIG");
+    QuizController c;
+    EXPECT_TRUE(c.configWarning().isEmpty());
+}
+
+TEST_F(QuizControllerTest, GoodCustomSelectorSettingsLoadWithoutWarning) {
+    const auto cfg = writeFile(dir, "selector.json", R"({"sigma": 3, "useHistory": false})");
+    qputenv("CQ_SELECTOR_CONFIG", QByteArray::fromStdString(cfg.string()));
+    QuizController c;
+    EXPECT_TRUE(c.configWarning().isEmpty());
+    qunsetenv("CQ_SELECTOR_CONFIG");
+}
+
+TEST_F(QuizControllerTest, BadSelectorSettingsAreReportedAndTheGameStillRuns) {
+    const auto cfg = writeFile(dir, "selector.json", R"({"sigmaa": 3})");  // typo
+    qputenv("CQ_SELECTOR_CONFIG", QByteArray::fromStdString(cfg.string()));
+    QuizController c;
+    EXPECT_NE(c.configWarning().indexOf("sigmaa"), -1);
+    EXPECT_EQ(c.state(), QuizController::Asking);
+    c.submit("return 0;");
+    EXPECT_EQ(c.state(), QuizController::Correct);
+    qunsetenv("CQ_SELECTOR_CONFIG");
+}
+
+TEST_F(QuizControllerTest, MissingSelectorSettingsFileIsReported) {
+    qputenv("CQ_SELECTOR_CONFIG", QByteArray("Z:/no/such/selector.json"));
+    QuizController c;
+    EXPECT_FALSE(c.configWarning().isEmpty());
+    EXPECT_EQ(c.state(), QuizController::Asking);
+    qunsetenv("CQ_SELECTOR_CONFIG");
+}
+
+TEST_F(QuizControllerTest, SavedHistoryReachesTheSelector) {
+    qunsetenv("CQ_SELECTOR_CONFIG");
+    qputenv("CQ_QUESTIONS_DIR", CQ_TEST_PAIR_DIR);
+
+    // A previous run: "known" answered correctly and fast, 20 times, just now.
+    cq::Progress history;
+    for (int i = 0; i < 20; ++i) history.recordAnswer("known", cq::Outcome::Correct, 1.0, cq::systemSeconds());
+    cq::saveProgress(progressFile, history);
+
+    // Both questions are otherwise identical, so a fair coin would pick "fresh"
+    // half the time. With history it should be strongly preferred.
+    int fresh = 0;
+    const int runs = 60;
+    for (int i = 0; i < runs; ++i) {
+        QuizController c;
+        if (c.prompt() == "The one you have never seen") ++fresh;
+    }
+    qputenv("CQ_QUESTIONS_DIR", CQ_TEST_QUESTIONS_DIR);
+    EXPECT_GT(fresh, 40) << "fresh question picked only " << fresh << " of " << runs << " times";
+}

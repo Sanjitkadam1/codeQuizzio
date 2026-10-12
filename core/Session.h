@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cstdint>
-#include <functional>
 #include <memory>
 #include <string>
 
 #include "AnswerChecker.h"
+#include "Clock.h"
 #include "Progress.h"
 #include "Question.h"
 #include "QuestionBank.h"
@@ -28,9 +27,6 @@ struct SessionSummary {
     bool newHighScore = false;
     bool newBestStreak = false;
 };
-
-// Seconds since the unix epoch. Injectable so tests control "now".
-using Clock = std::function<std::int64_t()>;
 
 // One play session. The UI owns the clock: it starts timing when the question
 // is shown, excludes paused time, and passes the elapsed seconds in. That keeps
